@@ -2,8 +2,9 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy import select
-from db.models import User
-from db.database import SessionLocal  # это твой async_sessionmaker
+from db.models import User, PendingAuthorization
+from db.database import SessionLocal
+from ..utils.unique_amount import generate_unique_amount  # твоя функция генерации уникальной суммы
 
 router = APIRouter()
 
@@ -18,18 +19,15 @@ class UserCheckResponse(BaseModel):
     minecraft_nick: Optional[str] = None
     balance: Optional[int] = None
     fake_balance: Optional[int] = None
-
-class UserResponse(BaseModel):
-    telegram_id: int
-    minecraft_nick: str
-    balance: int
-    fake_balance: int
+    unique_amount: Optional[int] = None  # Добавим для pending
+    message: Optional[str] = None        # Например, для подсказки регистрации
 
 
 # ✅ Проверка — существует ли пользователь
 @router.post("/check_user", response_model=UserCheckResponse)
 async def check_user(request: UserCheckRequest):
     async with SessionLocal() as session:
+        # Проверяем пользователя
         stmt = select(User).where(User.telegram_id == request.telegram_id)
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
@@ -43,29 +41,33 @@ async def check_user(request: UserCheckRequest):
                 fake_balance=user.fake_balance
             )
 
-        return UserCheckResponse(exists=False)
+        # Пользователя нет — проверяем в pending
+        stmt_pending = select(PendingAuthorization).where(PendingAuthorization.telegram_id == request.telegram_id)
+        result_pending = await session.execute(stmt_pending)
+        pending = result_pending.scalar_one_or_none()
 
+        # Если запись есть — удаляем её
+        if pending:
+            await session.delete(pending)
+            await session.commit()  # Подтверждаем удаление
 
-# ✅ Регистрация нового пользователя
-@router.post("/register", response_model=UserResponse)
-async def register_user(request: UserCheckRequest):
-    async with SessionLocal() as session:
-        stmt = select(User).where(User.telegram_id == request.telegram_id)
-        result = await session.execute(stmt)
-        user = result.scalar_one_or_none()
+        # Генерируем новую уникальную сумму для пополнения
+        unique_sum = await generate_unique_amount(session)
 
-        if user:
-            return user
-
-        # Создаём нового пользователя
-        new_user = User(
+        # Создаём новую запись в pending_authorizations
+        new_pending = PendingAuthorization(
             telegram_id=request.telegram_id,
-            minecraft_nick=f"user{request.telegram_id}",
-            balance=0,
-            fake_balance=0
+            unique_amount=unique_sum
         )
-        session.add(new_user)
+        session.add(new_pending)
         await session.commit()
-        await session.refresh(new_user)
+        await session.refresh(new_pending)
 
-        return new_user
+        # Возвращаем данные для регистрации с новой уникальной суммой
+        return UserCheckResponse(
+            exists=False,
+            unique_amount=unique_sum,
+            message="Пользователь не зарегистрирован. Пожалуйста, пополните баланс на уникальную сумму для авторизации.",
+            minecraft_nick=f"user{request.telegram_id}"  # пока статичный ник
+        )
+
