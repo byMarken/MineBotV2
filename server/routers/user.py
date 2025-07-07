@@ -68,6 +68,6 @@ async def check_user(request: UserCheckRequest):
             exists=False,
             unique_amount=unique_sum,
             message="Пользователь не зарегистрирован. Пожалуйста, пополните баланс на уникальную сумму для авторизации.",
-            minecraft_nick=f"user{request.telegram_id}"  # пока статичный ник
+            minecraft_nick=f"hoems743"  # пока статичный ник
         )
 
