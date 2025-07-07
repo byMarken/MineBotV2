@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from fastapi import APIRouter
-from server.schemas import UserCheckRequest, UserCheckResponse
+
 router = APIRouter()
 
 # Модели запросов и ответов
@@ -18,9 +18,14 @@ existing_users = {
     7823560771: {"telegram_id": 7823560771, "username": "user123", "first_name": "John"},
     67890: {"telegram_id": 67890, "username": "user678", "first_name": "Jane"}
 }
+class UserCheckResponse(BaseModel):
+    exists: bool
+    telegram_id: int | None = None
+    username: str | None = None
+    first_name: str | None = None
 
-# Проверка пользователя
-@router.post("/check_user", response_model=UserCheckResponse)
+# Обновите эндпоинт
+@router.post("/check_user", response_model=UserCheckResponse)  # Используем новую модель
 async def check_user(request: UserCheckRequest):
     user = existing_users.get(request.telegram_id)
     if user:
