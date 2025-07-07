@@ -1,47 +1,71 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from fastapi import APIRouter
+from typing import Optional
+from sqlalchemy import select
+from db.models import User
+from db.database import SessionLocal  # это твой async_sessionmaker
 
 router = APIRouter()
+
 
 # Модели запросов и ответов
 class UserCheckRequest(BaseModel):
     telegram_id: int
 
-class UserResponse(BaseModel):
-    telegram_id: int
-    username: str
-    first_name: str
-
-# Список для имитации проверки (без сохранения)
-existing_users = {
-    7823560771: {"telegram_id": 7823560771, "username": "user123", "first_name": "John"},
-    67890: {"telegram_id": 67890, "username": "user678", "first_name": "Jane"}
-}
 class UserCheckResponse(BaseModel):
     exists: bool
-    telegram_id: int | None = None
-    username: str | None = None
-    first_name: str | None = None
+    telegram_id: Optional[int] = None
+    minecraft_nick: Optional[str] = None
+    balance: Optional[int] = None
+    fake_balance: Optional[int] = None
 
-# Обновите эндпоинт
-@router.post("/check_user", response_model=UserCheckResponse)  # Используем новую модель
+class UserResponse(BaseModel):
+    telegram_id: int
+    minecraft_nick: str
+    balance: int
+    fake_balance: int
+
+
+# ✅ Проверка — существует ли пользователь
+@router.post("/check_user", response_model=UserCheckResponse)
 async def check_user(request: UserCheckRequest):
-    user = existing_users.get(request.telegram_id)
-    if user:
-        return {
-            "exists": True,
-            "telegram_id": user["telegram_id"],
-            "username": user["username"],
-            "first_name": user["first_name"]
-        }
-    return {"exists": False}
+    async with SessionLocal() as session:
+        stmt = select(User).where(User.telegram_id == request.telegram_id)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if user:
+            return UserCheckResponse(
+                exists=True,
+                telegram_id=user.telegram_id,
+                minecraft_nick=user.minecraft_nick,
+                balance=user.balance,
+                fake_balance=user.fake_balance
+            )
+
+        return UserCheckResponse(exists=False)
 
 
-# Регистрация пользователя (пока не сохраняем, просто возвращаем данные)
+# ✅ Регистрация нового пользователя
 @router.post("/register", response_model=UserResponse)
 async def register_user(request: UserCheckRequest):
-    if request.telegram_id not in existing_users:
-        # Возвращаем фейковые данные для регистрации
-        return {"telegram_id": request.telegram_id, "username": f"user{request.telegram_id}", "first_name": f"User{request.telegram_id}"}
-    return {"telegram_id": request.telegram_id, "username": existing_users[request.telegram_id]["username"], "first_name": existing_users[request.telegram_id]["first_name"]}
+    async with SessionLocal() as session:
+        stmt = select(User).where(User.telegram_id == request.telegram_id)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if user:
+            return user
+
+        # Создаём нового пользователя
+        new_user = User(
+            telegram_id=request.telegram_id,
+            minecraft_nick=f"user{request.telegram_id}",
+            balance=0,
+            fake_balance=0
+        )
+        session.add(new_user)
+        await session.commit()
+        await session.refresh(new_user)
+
+        return new_user
