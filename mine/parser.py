@@ -3,7 +3,7 @@ import re
 import os
 import time
 
-BASE_API_URL = "http://localhost:8000/confirm_payment"
+BASE_API_URL = "http://localhost:8000/dep"
 
 def follow(thefile):
     thefile.seek(0, 2)  # Переходим в конец файла

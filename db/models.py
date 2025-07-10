@@ -13,7 +13,7 @@ class User(Base):
 
     telegram_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     minecraft_nick: Mapped[str] = mapped_column()
-    balance: Mapped[int] = mapped_column(default=0)
+    balance: Mapped[int] = mapped_column(BigInteger, default=0)
     fake_balance: Mapped[int] = mapped_column(default=0)
 
 

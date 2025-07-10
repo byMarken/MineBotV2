@@ -1,8 +1,10 @@
 from aiogram import Router
+from bot.utils.menu import create_main_menu
 from bot.log import logger
 from aiogram.types import Message
 from aiogram.filters import CommandStart  # Используем CommandStart для фильтрации команды "/start"
 from bot.config import API_URL
+
 import aiohttp
 
 router = Router()
@@ -18,13 +20,17 @@ async def start_command(message: Message):
         async with aiohttp.ClientSession() as session:
             async with session.post(f"{API_URL}/check_user", json={"telegram_id": telegram_id}) as resp:
 
-                logger.info(f"Ответ от сервера: {resp.status}")
                 if resp.status == 200:
                     data = await resp.json()
-                    logger.info(f"Полученные данные: {data}")
 
                     if data['exists']:
-                        await message.answer("🎰 Добро пожаловать в казино! Ты уже зарегистрирован. Начни игру!")
+                        try:
+                            await message.answer(
+                                "🎰 Добро пожаловать в казино! Ты уже зарегистрирован. Начни игру!",
+                                reply_markup=create_main_menu()
+                            )
+                        except Exception as e:
+                            logger.error(f"Ошибка при отправке меню: {e}")
                     else:
                         # Подставляем уникальную сумму и ник из ответа API
                         unique_amount = data.get("unique_amount")

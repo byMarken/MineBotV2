@@ -5,10 +5,37 @@ from db.models import User, PendingAuthorization
 from ..utils.unique_amount import generate_unique_amount  # твоя функция генерации уникальной суммы
 
 
+class DepositService:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def increase_balance_parser(self, minecraft_nick: str, sum: float):
+        # Находим пользователя по Minecraft-нику в таблице users
+        user = await self.session.execute(
+            select(User).filter(User.minecraft_nick == minecraft_nick)
+        )
+        user = user.scalars().first()
+
+        if user:
+            # Увеличиваем баланс пользователя
+            user.balance += int(sum)  # Предполагается, что поле balance существует в модели Users
+            # Сохраняем изменения в базе данных
+            self.session.add(user)
+            await self.session.commit()
+            return user
+        else:
+            raise NoResultFound(f"Пользователь с ником {minecraft_nick} не найден.")
+
 # Сервис для работы с пользователями
 class UserService:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    async def get_user_by_minecraft_nick(self, nickname: str) -> User | None:
+        """Получить пользователя по Minecraft нику."""
+        stmt = select(User).where(User.minecraft_nick == nickname)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_user_by_telegram_id(self, telegram_id: int) -> User | None:
         """Получить пользователя по telegram_id."""
@@ -28,6 +55,16 @@ class UserService:
         await self.session.commit()
         await self.session.refresh(new_user)
         return new_user
+
+    async def get_nick_and_balance_by_telegram_id(self, telegram_id: int) -> tuple[str, int] | None:
+        """Получить ник и баланс пользователя по Telegram ID."""
+        stmt = select(User.minecraft_nick, User.balance).where(User.telegram_id == telegram_id)
+        result = await self.session.execute(stmt)
+        row = result.first()
+
+        if row:
+            return row  # вернётся tuple (minecraft_nick, balance)
+        return None
 
 
 # Сервис для работы с таблицей PendingAuthorization
