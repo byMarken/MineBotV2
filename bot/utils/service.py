@@ -1,14 +1,5 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
-def create_slots_menu():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🎰 Крутить слоты")],
-            [KeyboardButton(text="⬅️ Назад в меню")]
-        ],
-        resize_keyboard=True
-    )
-
 
 def beautiful_balance(value: float | int) -> str:
     return f"{int(value):,}".replace(",", ".")

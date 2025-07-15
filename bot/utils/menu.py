@@ -9,7 +9,8 @@ def create_main_menu():
         keyboard=[
             [KeyboardButton(text="Пополнить 💸"), KeyboardButton(text="Вывести 💰")],
             [KeyboardButton(text="Выбор игрового режима 🎮")],
-            [KeyboardButton(text="Профиль 👤"), KeyboardButton(text="Размер ставки 💎")]
+            [KeyboardButton(text="Профиль 👤"), KeyboardButton(text="О нас")]
         ],
         resize_keyboard=True,
     )
+

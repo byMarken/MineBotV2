@@ -1,6 +1,6 @@
 from aiogram import Router, types, F
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-from bot.utils.service import create_slots_menu
 
 router = Router()
 
@@ -10,5 +10,12 @@ async def show_game_modes(message: types.Message):
         "🎮 Выберите режим игры:",
         reply_markup=create_slots_menu()
     )
-
+def create_slots_menu():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🎰 Крутить слоты")],
+            [KeyboardButton(text="⬅️ Назад в меню")]
+        ],
+        resize_keyboard=True
+    )
 

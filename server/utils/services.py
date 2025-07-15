@@ -10,16 +10,13 @@ class DepositService:
         self.session = session
 
     async def increase_balance_parser(self, minecraft_nick: str, sum: float):
-        # Находим пользователя по Minecraft-нику в таблице users
         user = await self.session.execute(
             select(User).filter(User.minecraft_nick == minecraft_nick)
         )
         user = user.scalars().first()
 
         if user:
-            # Увеличиваем баланс пользователя
-            user.balance += int(sum)  # Предполагается, что поле balance существует в модели Users
-            # Сохраняем изменения в базе данных
+            user.balance += int(sum)
             self.session.add(user)
             await self.session.commit()
             return user
